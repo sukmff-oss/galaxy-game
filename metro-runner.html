@@ -90,7 +90,7 @@ body{background:#000;overflow:hidden;font-family:'Courier New',monospace;user-se
 <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
 <script>
 "use strict";
-const G={lv:1,xp:0,score:0,kills:0,hp:100,maxHp:100,def:0,spd:0,dualPistol:false,clownCount:0};
+const G={lv:1,xp:0,score:0,kills:0,hp:100,maxHp:100,def:0,spd:0,dualPistol:false,clownCount:0,atkBonus:0};
 const XP_BASE=120,XP_MUL=1.28;
 function xpForLevel(lv){return Math.floor(XP_BASE*Math.pow(XP_MUL,lv-1));}
 let audioCtx=null;
@@ -201,11 +201,13 @@ function getBulletCount(){
 }
 function getAtk(){
   const lv=G.lv;
-  if(lv>=100)return 45;if(lv>=90)return 38;if(lv>=80)return 32;
-  if(lv>=70)return 26;if(lv>=60)return 22;if(lv>=50)return 18;
-  if(lv>=40)return 15;if(lv>=30)return 12;if(lv>=25)return 10;
-  if(lv>=20)return 9;if(lv>=15)return 8;if(lv>=10)return 7;
-  if(lv>=5)return 6;return 5;
+  let base;
+  if(lv>=100)base=45;else if(lv>=90)base=38;else if(lv>=80)base=32;
+  else if(lv>=70)base=26;else if(lv>=60)base=22;else if(lv>=50)base=18;
+  else if(lv>=40)base=15;else if(lv>=30)base=12;else if(lv>=25)base=10;
+  else if(lv>=20)base=9;else if(lv>=15)base=8;else if(lv>=10)base=7;
+  else if(lv>=5)base=6;else base=5;
+  return Math.floor(base*(1+G.atkBonus));
 }
 function doMuzzleFlash(wg){
   if(wg&&wg.userData.muzzleLight){wg.userData.muzzleLight.intensity=4;setTimeout(()=>{if(wg)wg.userData.muzzleLight.intensity=0;},60);}
@@ -610,7 +612,7 @@ function updateMissiles(dt){
 // DROP SYSTEM
 // ============================================================
 const DROPS=[
-  {name:'⚔️ 武器強化',desc:'子彈傷害 +30%',apply:()=>{}},
+  {name:'⚔️ 武器強化',desc:'子彈傷害 +30%',apply:()=>{G.atkBonus+=0.3;}},
   {name:'❤️ 體力提升',desc:'最大HP +30',apply:()=>{G.maxHp+=30;G.hp=Math.min(G.hp+30,G.maxHp);}},
   {name:'🛡️ 防禦強化',desc:'受到傷害 -15%',apply:()=>{G.def+=15;}},
   {name:'⚡ 速度提升',desc:'移動速度 +20%',apply:()=>{player.speed*=1.2;}},
@@ -641,6 +643,7 @@ function updateBuffIndicator(){
   const el=document.getElementById('buff-indicator');
   const parts=[];
   if(G.dualPistol)parts.push('🔫雙槍');
+  if(G.atkBonus>0)parts.push('⚔️武器+'+(Math.round(G.atkBonus*100))+'%');
   if(G.def>0)parts.push('🛡️防禦+'+G.def);
   if(player.speed>5.5)parts.push('⚡速度+'+(Math.round((player.speed/5.5-1)*100))+'%');
   if(drones.length>0)parts.push('🛸×'+drones.length);
@@ -720,7 +723,7 @@ function showKillFeed(text){const el=document.getElementById('killfeed');const d
 let gameRunning=false,lastTime=0;
 function startGame(){
   ensureAudio();
-  G.lv=1;G.xp=0;G.score=0;G.kills=0;G.hp=100;G.maxHp=100;G.def=0;G.spd=0;G.dualPistol=false;G.clownCount=0;
+  G.lv=1;G.xp=0;G.score=0;G.kills=0;G.hp=100;G.maxHp=100;G.def=0;G.spd=0;G.dualPistol=false;G.clownCount=0;G.atkBonus=0;
   player.yaw=0;player.pitch=0;player.invincible=0;player.speed=5.5;
   camera.position.set(0,1.7,20);
   for(const e of[...enemies])scene.remove(e.mesh);
