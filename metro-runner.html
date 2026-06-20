@@ -435,7 +435,7 @@ function spawnClown(lv,num){
   const atk=12+lv*0.8;
   const pts=80+lv*15;
   mesh.position.set((Math.random()-0.5)*6,0.45,-43);
-  const e={mesh,hp,maxHp:hp,speed,pts,atk,atkCd:1.8,atkTimer:1.8,isBoss:false,bossLv:lv,name:'小丑BOSS #'+num,color:0xff0000,dead:false,flash:0,attackRange:2.0,isArmored:false,armor:0,isClown:true,lastEMissile:0,emissileCd:2+Math.random(),hasLaughed:false,phase:0};
+  const e={mesh,hp,maxHp:hp,speed,pts,atk,atkCd:1.8,atkTimer:1.8,isBoss:false,bossLv:lv,name:'小丑BOSS #'+num,color:0xff0000,dead:false,flash:0,attackRange:2.0,isArmored:false,armor:0,isClown:true,lastEMissile:0,emissileCd:2+Math.random(),hasLaughed:false,phase:0,dartCd:2.0};
   mesh.userData.enemy=e;enemies.push(e);enemyMeshes.push(mesh);scene.add(mesh);
   document.getElementById('clown-bar').style.display='block';
   document.getElementById('clown-bar-label').textContent='🃏 小丑BOSS Lv'+lv+' #'+num;
@@ -484,6 +484,11 @@ function updateEnemies(dt){
     }
     if(e.isClown){
       e.mesh.position.y=0.45+Math.sin(Date.now()*0.003)*0.08;
+      e.dartCd-=dt;
+      if(e.dartCd<=0){
+        e.dartCd=2.0;
+        fireClownDart(e);
+      }
     }else if(!e.isBoss){
       e.mesh.position.y=e.mesh.geometry.parameters.radius+Math.sin(Date.now()*0.003+e.mesh.id)*0.1;
     }else{
@@ -493,6 +498,41 @@ function updateEnemies(dt){
 }
 
 const enemyMissiles=[];
+const clownDarts=[];
+function fireClownDart(e){
+  ensureAudio();playSound('enemy_missile');
+  // Dart: a sharp projectile shaped like a circus dart/arrow
+  const geo=new THREE.ConeGeometry(0.06,0.35,6);
+  const mat=new THREE.MeshStandardMaterial({color:0xff2222,emissive:0xff0000,emissiveIntensity:0.8,metalness:0.7,roughness:0.3});
+  const mesh=new THREE.Mesh(geo,mat);
+  mesh.position.copy(e.mesh.position);
+  mesh.position.y+=0.5;
+  scene.add(mesh);
+  const light=new THREE.PointLight(0xff4400,1.5,5);light.position.copy(mesh.position);scene.add(light);
+  const dx=camera.position.x-e.mesh.position.x,dz=camera.position.z-e.mesh.position.z;
+  const dist=Math.sqrt(dx*dx+dz*dz);
+  clownDarts.push({mesh,light,tx:camera.position.x,ty:camera.position.y,tz:camera.position.z,
+    nx:dx/dist,nz:dz/dist,speed:10,life:4.0,damage:8+G.lv*0.5});
+}
+function updateClownDarts(dt){
+  for(let i=clownDarts.length-1;i>=0;i--){
+    const d=clownDarts[i];d.life-=dt;
+    if(d.life<=0){scene.remove(d.mesh);scene.remove(d.light);clownDarts.splice(i,1);continue;}
+    d.mesh.position.x+=d.nx*d.speed*dt;
+    d.mesh.position.z+=d.nz*d.speed*dt;
+    d.light.position.copy(d.mesh.position);
+    d.mesh.lookAt(d.mesh.position.x+d.nx,d.mesh.position.y,d.mesh.position.z+d.nz);
+    // Check hit on player
+    const p=camera.position;
+    const hitDist=Math.sqrt((p.x-d.mesh.position.x)**2+(p.y-d.mesh.position.y)**2+(p.z-d.mesh.position.z)**2);
+    if(hitDist<0.8){
+      const dmg=d.damage*(1-G.def*0.01);
+      damagePlayer(dmg);
+      playSound('explode');spawnHitParticles(d.mesh.position.clone(),0xff4444);
+      scene.remove(d.mesh);scene.remove(d.light);clownDarts.splice(i,1);
+    }
+  }
+}
 function fireEnemyMissile(e){
   ensureAudio();playSound('enemy_missile');
   const geo=new THREE.CylinderGeometry(0.04,0.06,0.3,6);geo.rotateX(Math.PI/2);
@@ -730,6 +770,7 @@ function startGame(){
   enemies.length=0;enemyMeshes.length=0;
   for(const m of[...missiles]){scene.remove(m.mesh);scene.remove(m.light);}missiles.length=0;
   for(const m of[...enemyMissiles]){scene.remove(m.mesh);scene.remove(m.light);}enemyMissiles.length=0;
+  for(const d of[...clownDarts]){scene.remove(d.mesh);scene.remove(d.light);}clownDarts.length=0;
   for(const p of[...particles])scene.remove(p.mesh);particles.length=0;
   for(const d of[...drones])scene.remove(d.mesh);drones.length=0;
   bossActive=false;bossWarnTimer=0;enemySpawnTimer=1.0;spawnInterval=1.0;gameRunning=true;
@@ -743,7 +784,7 @@ function gameOver(){gameRunning=false;showMsg('GAME OVER\n分數: '+G.score.toLo
 function gameLoop(timestamp){
   if(!gameRunning)return;
   const dt=Math.min((timestamp-lastTime)/1000,0.05);lastTime=timestamp;
-  if(!dropPending){updatePlayer(dt);updateEnemies(dt);updateDrones(dt);updateMissiles(dt);updateParticles(dt);updateDamageFlash(dt);updateEnemyMissiles(dt);}
+  if(!dropPending){updatePlayer(dt);updateEnemies(dt);updateDrones(dt);updateMissiles(dt);updateParticles(dt);updateDamageFlash(dt);updateEnemyMissiles(dt);updateClownDarts(dt);}
   if(bossWarnTimer>0){bossWarnTimer-=dt;if(bossWarnTimer<=0&&!dropPending)triggerBoss();}
   if(player.invincible>0){camera.visible=Math.floor(player.invincible*20)%2===0;}else{camera.visible=true;}
   renderer.render(scene,camera);requestAnimationFrame(gameLoop);
