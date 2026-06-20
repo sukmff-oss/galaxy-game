@@ -293,7 +293,7 @@ function updateParticles(dt){
   }
 }
 
-const enemies=[];const enemyMeshes=[];let enemySpawnTimer=0;let spawnInterval=2.0;
+const enemies=[];const enemyMeshes=[];let enemySpawnTimer=0;let spawnInterval=1.0;
 const BOSS_DATA={
   20:{name:'青龍',color:0x00ff88,hpMult:1.0,ptsMult:1.0},
   40:{name:'赤鳳',color:0xff4400,hpMult:1.8,ptsMult:1.5},
@@ -729,7 +729,7 @@ function startGame(){
   for(const m of[...enemyMissiles]){scene.remove(m.mesh);scene.remove(m.light);}enemyMissiles.length=0;
   for(const p of[...particles])scene.remove(p.mesh);particles.length=0;
   for(const d of[...drones])scene.remove(d.mesh);drones.length=0;
-  bossActive=false;bossWarnTimer=0;enemySpawnTimer=1.0;spawnInterval=2.0;gameRunning=true;
+  bossActive=false;bossWarnTimer=0;enemySpawnTimer=1.0;spawnInterval=1.0;gameRunning=true;
   buildWeapons();updateHUD();updateBuffIndicator();
   document.getElementById('menu').style.display='none';
   document.getElementById('clown-bar').style.display='none';
